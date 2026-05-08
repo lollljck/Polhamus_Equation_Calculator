@@ -6,8 +6,14 @@ Implements the Polhamus lift-curve slope formula (semi-empirical, subsonic)
 to compute the wing lift coefficient CL at a user-specified angle of attack.
 
 Reference:
-  "Polhamus Formula" as provided by the user – estimates c_L_alpha for
-  swept wings with AR between 3 and 7, Lambda_LE < 30-32°, M < M_crit.
+  "Polhamus Formula" as provided – estimates c_L_alpha for swept wings
+  with AR between 3 and 7, Lambda_LE < 30-32°, M < M_crit.
+
+Restrictions:
+  - The formula is derived from linear subsonic theory. It is valid only
+    for Mach numbers well below 1.0 (typically M < 0.8).  At M = 1 the
+    denominator becomes zero, and the physics changes completely.
+    For safety, this script rejects M >= 0.9.
 
 Usage:
   Run in terminal, answer the prompts.
@@ -34,21 +40,23 @@ def main():
     Lambda_LE_deg = float(input("Leading-edge sweep angle (deg): "))
     Lambda_05_deg = float(input("Half-chord sweep angle (deg): "))
 
-    # ----- Mach number -----
+    # ----- Mach number with guard -----
     M = float(input("Mach number (0 for low-speed RC): "))
+    if M >= 0.9:
+        print("\nERROR: Polhamus formula is only valid for subsonic Mach numbers.")
+        print("       The denominator (1 - M²) becomes zero or negative at M ≥ 1.")
+        print("       Please enter a Mach number less than 0.9 (typical RC: 0).")
+        return  # exit the script
 
     # ----- Polhamus k factor -----
-    # Two cases as per the provided formula
     if AR < 4:
         k = 1.0 + AR * (1.87 - 0.000233 * Lambda_LE_deg) / 100.0
     else:
         k = 1.0 + ((8.2 - 2.3 * Lambda_LE_deg) - AR * (0.22 - 0.153 * Lambda_LE_deg)) / 100.0
 
     # ----- Lift-curve slope (per radian) -----
-    # Convert sweep angles to radians for tan function
     Lambda_05_rad = math.radians(Lambda_05_deg)
 
-    # Precompute term inside the sqrt
     term1 = (AR**2 * (1 - M**2)) / (k**2)
     term2 = 1.0 + (math.tan(Lambda_05_rad)**2) / (1 - M**2)
     sqrt_term = math.sqrt(term1 * term2 + 4.0)
@@ -70,8 +78,6 @@ def main():
 
     print(f"\nCoefficient of Lift CL at α = {alpha_deg}°:")
     print(f"  CL = {CL:.4f}")
-
-    # Optional: display effective AoA relative to zero-lift
     print(f"  (Effective α = {alpha_deg - alpha_0_deg:.1f}° above zero-lift)")
 
 if __name__ == "__main__":
